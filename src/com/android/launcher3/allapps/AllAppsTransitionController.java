@@ -268,6 +268,10 @@ public class AllAppsTransitionController implements TouchController, SwipeDetect
             mHotseat.setVisibility(View.VISIBLE);
             mHotseatBackgroundColor = mHotseat.getBackgroundDrawableColor();
             mHotseat.setBackgroundTransparent(true /* transparent */);
+            if (FeatureFlags.LAUNCHER3_SIMPLE_ALL_APPS_TRANSITION) {
+                mAppsView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+                mAppsView.buildLayer();
+            }
             if (!mLauncher.isAllAppsVisible()) {
                 mLauncher.tryAndUpdatePredictedApps();
                 mAppsView.setVisibility(View.VISIBLE);
@@ -314,6 +318,18 @@ public class AllAppsTransitionController implements TouchController, SwipeDetect
         float shiftPrevious = mProgress * mShiftRange;
         mProgress = progress;
         float shiftCurrent = progress * mShiftRange;
+
+        // Low-end devices cannot redraw and blend the drawer, workspace, hotseat,
+        // gradient and status-bar state at 60 fps. Keep the content opaque and
+        // animate one hardware-composited layer instead.
+        if (FeatureFlags.LAUNCHER3_SIMPLE_ALL_APPS_TRANSITION) {
+            mAppsView.getContentView().setAlpha(1f);
+            mAppsView.setTranslationY(shiftCurrent);
+            if (progress == 0f || progress == 1f) {
+                updateLightStatusBar(shiftCurrent);
+            }
+            return;
+        }
 
         float workspaceHotseatAlpha = Utilities.boundToRange(progress, 0f, 1f);
         float alpha = 1 - workspaceHotseatAlpha;
@@ -506,6 +522,9 @@ public class AllAppsTransitionController implements TouchController, SwipeDetect
             mSpringAnimationHandler.reset();
         }
         setProgress(0f);
+        if (FeatureFlags.LAUNCHER3_SIMPLE_ALL_APPS_TRANSITION) {
+            mAppsView.setLayerType(View.LAYER_TYPE_NONE, null);
+        }
     }
 
     public void finishPullDown() {
@@ -517,6 +536,9 @@ public class AllAppsTransitionController implements TouchController, SwipeDetect
             mSpringAnimationHandler.reset();
         }
         setProgress(1f);
+        if (FeatureFlags.LAUNCHER3_SIMPLE_ALL_APPS_TRANSITION) {
+            mAppsView.setLayerType(View.LAYER_TYPE_NONE, null);
+        }
     }
 
     private void cancelAnimation() {
